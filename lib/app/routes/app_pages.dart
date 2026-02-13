@@ -5,6 +5,7 @@ import 'app_routes.dart';
 import '../modules/auth/bindings/auth_binding.dart';
 import '../modules/auth/views/login_screen.dart';
 import '../modules/auth/views/register_screen.dart';
+import '../modules/auth/views/register_admin_screen.dart';
 
 // ── Customer ──
 import '../modules/customer/bindings/customer_binding.dart';
@@ -49,6 +50,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.register,
       page: () => const RegisterScreen(),
+      binding: AuthBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: AppRoutes.registerAdmin,
+      page: () => const RegisterAdminScreen(),
       binding: AuthBinding(),
       transition: Transition.rightToLeft,
     ),

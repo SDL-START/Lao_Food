@@ -350,6 +350,43 @@ class LoginScreen extends GetView<AuthController> {
                       ],
                     ),
 
+                    const SizedBox(height: 16),
+
+                    // ── Register Admin Link ──
+                    GestureDetector(
+                      onTap: () => Get.toNamed(AppRoutes.registerAdmin),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.admin_panel_settings,
+                              size: 20,
+                              color: AppColors.primary.withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'ລົງທະບຽນເປັນ Admin',
+                              style: TextStyle(
+                                color: AppColors.primary.withValues(alpha: 0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 40),
                   ],
                 ),

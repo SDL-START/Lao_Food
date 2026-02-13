@@ -18,6 +18,7 @@ class AuthController extends GetxController {
 
   final formKey = GlobalKey<FormState>();
   final registerFormKey = GlobalKey<FormState>();
+  final registerAdminFormKey = GlobalKey<FormState>();
 
   final RxBool isLoading = false.obs;
   final RxBool obscurePassword = true.obs;
@@ -35,6 +36,35 @@ class AuthController extends GetxController {
 
       if (user != null) {
         Log.i('Login success, role: ${user.role}');
+        _navigateByRole(user.role);
+      }
+    } catch (e) {
+      Helpers.showError(e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ── Register Admin ──
+  Future<void> registerAdmin() async {
+    if (!registerAdminFormKey.currentState!.validate()) return;
+
+    if (passwordController.text != confirmPasswordController.text) {
+      Helpers.showError('ລະຫັດຜ່ານບໍ່ຕົງກັນ');
+      return;
+    }
+
+    isLoading.value = true;
+    try {
+      final user = await _authService.registerAdmin(
+        name: nameController.text.trim(),
+        email: emailController.text.trim(),
+        phone: phoneController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (user != null) {
+        Helpers.showSuccess('ລົງທະບຽນ Admin ສຳເລັດ!');
         _navigateByRole(user.role);
       }
     } catch (e) {

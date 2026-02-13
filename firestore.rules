@@ -1,0 +1,290 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================
+    // Helper Functions
+    // ============================
+
+    // ກວດວ່າ login ແລ້ວ
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ກວດວ່າເປັນເຈົ້າຂອງ document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ດຶງ role ຂອງ user ຈາກ Firestore
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // ກວດ role
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isShop() {
+      return isAuthenticated() && getUserRole() == 'shop';
+    }
+
+    function isRider() {
+      return isAuthenticated() && getUserRole() == 'rider';
+    }
+
+    function isCustomer() {
+      return isAuthenticated() && getUserRole() == 'customer';
+    }
+
+    // ດຶງ shopId ຂອງ user (ສຳລັບ shop role)
+    function getShopId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
+    }
+
+    // ============================
+    // USERS Collection
+    // ============================
+    match /users/{userId} {
+      // Admin ອ່ານໄດ້ໝົດ, user ອ່ານໄດ້ສະເພາະຂອງຕົນເອງ
+      allow read: if isOwner(userId) || isAdmin();
+
+      // ລູກຄ້າ ຫຼື Admin ສ້າງບັນຊີໃໝ່ (register)
+      allow create: if isAuthenticated()
+                    && request.auth.uid == userId
+                    && request.resource.data.role in ['customer', 'admin'];
+
+      // User ອັບເດດ profile ຂອງຕົນເອງ (fcmToken, isOnline, location)
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['role', 'uid', 'email', 'createdAt']);
+
+      // Admin ອັບເດດ user (isActive, riderStatus, ...)
+      allow update: if isAdmin();
+
+      // Admin ສ້າງ user ໃໝ່ (shop, rider)
+      allow create: if isAdmin();
+
+      // ບໍ່ອະນຸຍາດລົບ user
+      allow delete: if false;
+    }
+
+    // ============================
+    // SHOPS Collection
+    // ============================
+    match /shops/{shopId} {
+      // ລູກຄ້າ: ອ່ານສະເພາະຮ້ານທີ່ approved
+      // Shop: ອ່ານສະເພາະຮ້ານຂອງຕົນເອງ
+      // Admin: ອ່ານໄດ້ໝົດ
+      allow read: if isAdmin()
+                  || (isAuthenticated() && resource.data.status == 'approved')
+                  || (isShop() && getShopId() == shopId);
+
+      // Admin ສ້າງ ແລະ ອັບເດດຮ້ານ (approve, reject, suspend, commission)
+      allow create, update: if isAdmin();
+
+      // Shop ອັບເດດຮ້ານຂອງຕົນເອງ (isOpen, rating, totalOrders, ...)
+      allow update: if isShop()
+                    && getShopId() == shopId
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['status', 'commissionRate', 'ownerId']);
+
+      allow delete: if false;
+    }
+
+    // ============================
+    // MENU_ITEMS Collection
+    // ============================
+    match /menu_items/{itemId} {
+      // ລູກຄ້າ ອ່ານ menu ທີ່ available
+      allow read: if isAuthenticated()
+                  && resource.data.isAvailable == true;
+
+      // Shop ອ່ານ menu ຂອງຕົນເອງ (ລວມທັງ unavailable)
+      allow read: if isShop() && resource.data.shopId == getShopId();
+
+      // Admin ອ່ານໄດ້ໝົດ
+      allow read: if isAdmin();
+
+      // Shop ສ້າງ/ອັບເດດ/ລົບ menu ຂອງຕົນເອງ
+      allow create: if isShop()
+                    && request.resource.data.shopId == getShopId();
+
+      allow update: if isShop()
+                    && resource.data.shopId == getShopId()
+                    && request.resource.data.shopId == getShopId();
+
+      allow delete: if isShop()
+                    && resource.data.shopId == getShopId();
+
+      // Admin ຈັດການໄດ້ໝົດ
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================
+    // CATEGORIES Collection
+    // ============================
+    match /categories/{categoryId} {
+      // ທຸກຄົນທີ່ login ອ່ານໄດ້
+      allow read: if isAuthenticated();
+
+      // Admin ເທົ່ານັ້ນທີ່ສ້າງ/ແກ້ໄຂ/ລົບ
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================
+    // ORDERS Collection
+    // ============================
+    match /orders/{orderId} {
+      // ລູກຄ້າ ອ່ານ order ຂອງຕົນເອງ
+      allow read: if isAuthenticated()
+                  && resource.data.customerId == request.auth.uid;
+
+      // Shop ອ່ານ order ຂອງຮ້ານຕົນເອງ
+      allow read: if isShop()
+                  && resource.data.shopId == getShopId();
+
+      // Rider ອ່ານ order ທີ່ assign ໃຫ້ຕົນເອງ ຫຼື order ທີ່ກຽມພ້ອມ (ຍັງບໍ່ມີ rider)
+      allow read: if isRider()
+                  && (resource.data.riderId == request.auth.uid
+                      || (resource.data.status == 'readyForPickup'
+                          && resource.data.riderId == null));
+
+      // Admin ອ່ານໄດ້ໝົດ
+      allow read: if isAdmin();
+
+      // ລູກຄ້າ ສ້າງ order ໃໝ່
+      allow create: if isCustomer()
+                    && request.resource.data.customerId == request.auth.uid;
+
+      // ລູກຄ້າ ຍົກເລີກ order ຂອງຕົນເອງ (ສະເພາະ status pending)
+      allow update: if isCustomer()
+                    && resource.data.customerId == request.auth.uid
+                    && resource.data.status == 'pending'
+                    && request.resource.data.status == 'cancelled';
+
+      // Shop ອັບເດດ status order ຂອງຮ້ານ
+      allow update: if isShop()
+                    && resource.data.shopId == getShopId();
+
+      // Rider ອັບເດດ order (assign ຕົນເອງ, ອັບເດດ status, COD)
+      allow update: if isRider()
+                    && (resource.data.riderId == request.auth.uid
+                        || resource.data.riderId == null);
+
+      // Admin ອັບເດດໄດ້ໝົດ
+      allow update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+    // ============================
+    // ADDRESSES Collection
+    // ============================
+    match /addresses/{addressId} {
+      // ລູກຄ້າ ອ່ານ/ສ້າງ/ລົບ address ຂອງຕົນເອງ
+      allow read, delete: if isAuthenticated()
+                          && resource.data.userId == request.auth.uid;
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ============================
+    // REVIEWS Collection
+    // ============================
+    match /reviews/{reviewId} {
+      // ທຸກຄົນທີ່ login ອ່ານໄດ້
+      allow read: if isAuthenticated();
+
+      // ລູກຄ້າ ສ້າງ review
+      allow create: if isCustomer()
+                    && request.resource.data.customerId == request.auth.uid;
+
+      // ບໍ່ອະນຸຍາດແກ້ໄຂ/ລົບ review
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================
+    // PROMOS Collection
+    // ============================
+    match /promos/{promoId} {
+      // ທຸກຄົນທີ່ login ອ່ານໄດ້
+      allow read: if isAuthenticated();
+
+      // Shop ສ້າງ/ແກ້ໄຂ promo ຂອງຮ້ານຕົນເອງ
+      allow create: if isShop()
+                    && request.resource.data.shopId == getShopId();
+
+      allow update: if isShop()
+                    && resource.data.shopId == getShopId();
+
+      // Admin ຈັດການໄດ້ໝົດ
+      allow create, update, delete: if isAdmin();
+
+      allow delete: if false;
+    }
+
+    // ============================
+    // CHAT_ROOMS Collection + Messages Subcollection
+    // ============================
+    match /chat_rooms/{roomId} {
+      // ຜູ້ທີ່ຢູ່ໃນ chat room ອ່ານໄດ້
+      allow read: if isAuthenticated()
+                  && (resource.data.customerId == request.auth.uid
+                      || resource.data.riderId == request.auth.uid
+                      || resource.data.shopId == getShopId());
+
+      // Admin ອ່ານໄດ້ໝົດ
+      allow read: if isAdmin();
+
+      // Rider ສ້າງ chat room (ເວລາຮັບ order)
+      allow create: if isRider()
+                    && request.resource.data.riderId == request.auth.uid;
+
+      // ຜູ້ທີ່ຢູ່ໃນ room ອັບເດດໄດ້ (lastMessage, lastMessageAt, ...)
+      allow update: if isAuthenticated()
+                    && (resource.data.customerId == request.auth.uid
+                        || resource.data.riderId == request.auth.uid);
+
+      allow delete: if false;
+
+      // ----- Messages Subcollection -----
+      match /messages/{messageId} {
+        // ຜູ້ທີ່ຢູ່ໃນ room ອ່ານໄດ້
+        allow read: if isAuthenticated()
+                    && (get(/databases/$(database)/documents/chat_rooms/$(roomId)).data.customerId == request.auth.uid
+                        || get(/databases/$(database)/documents/chat_rooms/$(roomId)).data.riderId == request.auth.uid);
+
+        // Admin ອ່ານໄດ້ໝົດ
+        allow read: if isAdmin();
+
+        // ຜູ້ທີ່ຢູ່ໃນ room ສົ່ງຂໍ້ຄວາມໄດ້
+        allow create: if isAuthenticated()
+                      && (get(/databases/$(database)/documents/chat_rooms/$(roomId)).data.customerId == request.auth.uid
+                          || get(/databases/$(database)/documents/chat_rooms/$(roomId)).data.riderId == request.auth.uid);
+
+        allow update, delete: if false;
+      }
+    }
+
+    // ============================
+    // SETTINGS Collection
+    // ============================
+    match /settings/{docId} {
+      // ທຸກຄົນທີ່ login ອ່ານໄດ້
+      allow read: if isAuthenticated();
+
+      // Admin ເທົ່ານັ້ນທີ່ແກ້ໄຂ
+      allow create, update: if isAdmin();
+
+      allow delete: if false;
+    }
+  }
+}

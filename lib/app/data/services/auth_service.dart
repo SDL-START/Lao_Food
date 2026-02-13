@@ -114,6 +114,47 @@ class AuthService extends GetxService {
     }
   }
 
+  /// ── Register Admin (ສ້າງບັນຊີ Admin ໃໝ່) ──
+  Future<UserModel?> registerAdmin({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      final result = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      if (result.user != null) {
+        final user = UserModel(
+          uid: result.user!.uid,
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          role: AppConstants.roleAdmin,
+          isActive: true,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(user.uid)
+            .set(user.toMap());
+
+        currentUser.value = user;
+        Log.i('Admin registered: ${user.name}');
+        return user;
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      Log.e('Register admin error: ${e.code}');
+      throw _mapAuthError(e.code);
+    }
+  }
+
   /// ── Admin creates Shop/Rider ──
   Future<UserModel?> createUserByAdmin({
     required String name,
