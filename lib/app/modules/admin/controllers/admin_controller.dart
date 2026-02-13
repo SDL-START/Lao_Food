@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/order_status.dart';
 import '../../../core/utils/helpers.dart';
@@ -9,10 +10,12 @@ import '../../../data/models/shop_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/firestore_service.dart';
+import '../../../data/services/storage_service.dart';
 
 class AdminController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final FirestoreService _firestoreService = Get.find<FirestoreService>();
+  final StorageService _storageService = Get.find<StorageService>();
 
   final RxInt currentNavIndex = 0.obs;
   final RxList<UserModel> allUsers = <UserModel>[].obs;
@@ -170,6 +173,68 @@ class AdminController extends GetxController {
     } catch (e) {
       Helpers.showError('ອັບເດດບໍ່ສຳເລັດ');
       Log.e('Error updating admin $field', e);
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  Future<void> updateProfileImage(ImageSource source) async {
+    if (adminUser == null) return;
+    try {
+      final file = await _storageService.pickImage(source: source);
+      if (file == null) return;
+
+      isUpdating.value = true;
+
+      // Delete old image if exists
+      if (adminUser!.profileImage != null &&
+          adminUser!.profileImage!.isNotEmpty) {
+        await _storageService.deleteImage(adminUser!.profileImage!);
+      }
+
+      // Upload new image
+      final url = await _storageService.uploadImage(
+        file,
+        AppConstants.profileImagesPath,
+      );
+
+      if (url != null) {
+        await _firestoreService.updateUser(adminUser!.uid, {
+          'profileImage': url,
+        });
+        await _authService.refreshUser();
+        Helpers.showSuccess('ອັບເດດຮູບໂປຣໄຟລ໌ສຳເລັດ');
+        Log.i('Admin profile image updated');
+      } else {
+        Helpers.showError('ອັບໂຫຼດຮູບບໍ່ສຳເລັດ');
+      }
+    } catch (e) {
+      Helpers.showError('ອັບເດດຮູບບໍ່ສຳເລັດ');
+      Log.e('Error updating profile image', e);
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  Future<void> removeProfileImage() async {
+    if (adminUser == null) return;
+    try {
+      isUpdating.value = true;
+
+      if (adminUser!.profileImage != null &&
+          adminUser!.profileImage!.isNotEmpty) {
+        await _storageService.deleteImage(adminUser!.profileImage!);
+      }
+
+      await _firestoreService.updateUser(adminUser!.uid, {
+        'profileImage': null,
+      });
+      await _authService.refreshUser();
+      Helpers.showSuccess('ລຶບຮູບໂປຣໄຟລ໌ແລ້ວ');
+      Log.i('Admin profile image removed');
+    } catch (e) {
+      Helpers.showError('ລຶບຮູບບໍ່ສຳເລັດ');
+      Log.e('Error removing profile image', e);
     } finally {
       isUpdating.value = false;
     }

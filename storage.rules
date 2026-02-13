@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Helper Functions ──
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // ── Profile Images ──
+    match /profile_images/{allPaths=**} {
+      // ທຸກຄົນທີ່ login ອ່ານໄດ້
+      allow read: if isAuthenticated();
+
+      // ທຸກຄົນທີ່ login ອັບໂຫຼດໄດ້ (ຮູບ < 5MB)
+      allow write: if isAuthenticated()
+                   && isImageType()
+                   && isUnder5MB();
+    }
+
+    // ── Shop Images ──
+    match /shop_images/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && isImageType()
+                   && isUnder5MB();
+    }
+
+    // ── Product Images ──
+    match /product_images/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && isImageType()
+                   && isUnder5MB();
+    }
+
+    // ── Chat Images ──
+    match /chat_images/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && isImageType()
+                   && isUnder5MB();
+    }
+  }
+}

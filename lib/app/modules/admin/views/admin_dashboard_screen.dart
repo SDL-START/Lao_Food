@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/helpers.dart';
@@ -216,68 +217,89 @@ class AdminDashboardScreen extends GetView<AdminController> {
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
                   child: Column(
                     children: [
-                      const Text(
-                        'ໂປຣໄຟລ໌ & ຕັ້ງຄ່າ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Avatar
-                      Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                width: 3,
-                              ),
-                            ),
-                            child: CircleAvatar(
-                              radius: 48,
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.2,
-                              ),
-                              backgroundImage:
-                                  user?.profileImage != null &&
-                                      user!.profileImage!.isNotEmpty
-                                  ? NetworkImage(user.profileImage!)
-                                  : null,
-                              child:
-                                  user?.profileImage == null ||
-                                      user!.profileImage!.isEmpty
-                                  ? const Icon(
-                                      Icons.admin_panel_settings,
-                                      size: 48,
-                                      color: Colors.white,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.shadow,
-                                  blurRadius: 6,
+                      // Avatar with edit button
+                      GestureDetector(
+                        onTap: () => _showImagePickerSheet(),
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  width: 3,
                                 ),
-                              ],
+                              ),
+                              child: CircleAvatar(
+                                radius: 48,
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.2,
+                                ),
+                                backgroundImage:
+                                    user?.profileImage != null &&
+                                        user!.profileImage!.isNotEmpty
+                                    ? NetworkImage(user.profileImage!)
+                                    : null,
+                                child:
+                                    user?.profileImage == null ||
+                                        user!.profileImage!.isEmpty
+                                    ? const Icon(
+                                        Icons.admin_panel_settings,
+                                        size: 48,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.verified,
-                              size: 20,
-                              color: AppColors.primary,
+                            // Camera edit badge
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  size: 18,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                            // Loading overlay
+                            if (controller.isUpdating.value)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.black.withValues(alpha: 0.4),
+                                  ),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 30,
+                                      height: 30,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
                       // Name
@@ -804,6 +826,149 @@ class AdminDashboardScreen extends GetView<AdminController> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showImagePickerSheet() {
+    final hasImage =
+        controller.adminUser?.profileImage != null &&
+        controller.adminUser!.profileImage!.isNotEmpty;
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              'ປ່ຽນຮູບໂປຣໄຟລ໌',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Camera option
+            _imagePickerOption(
+              icon: Icons.camera_alt,
+              color: AppColors.primary,
+              label: 'ຖ່າຍຮູບ',
+              subtitle: 'ໃຊ້ກ້ອງຖ່າຍຮູບໃໝ່',
+              onTap: () {
+                Get.back();
+                controller.updateProfileImage(ImageSource.camera);
+              },
+            ),
+            const SizedBox(height: 12),
+            // Gallery option
+            _imagePickerOption(
+              icon: Icons.photo_library,
+              color: AppColors.info,
+              label: 'ເລືອກຈາກຄັງຮູບ',
+              subtitle: 'ເລືອກຮູບພາບທີ່ມີຢູ່ໃນໂທລະສັບ',
+              onTap: () {
+                Get.back();
+                controller.updateProfileImage(ImageSource.gallery);
+              },
+            ),
+            // Remove option (only show if has image)
+            if (hasImage) ...[
+              const SizedBox(height: 12),
+              _imagePickerOption(
+                icon: Icons.delete_outline,
+                color: AppColors.error,
+                label: 'ລຶບຮູບໂປຣໄຟລ໌',
+                subtitle: 'ກັບຄືນໄປໃຊ້ຮູບເລີ່ມຕົ້ນ',
+                onTap: () async {
+                  Get.back();
+                  final confirm = await Helpers.showConfirmDialog(
+                    title: 'ລຶບຮູບໂປຣໄຟລ໌',
+                    message: 'ແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຮູບໂປຣໄຟລ໌?',
+                  );
+                  if (confirm) {
+                    controller.removeProfileImage();
+                  }
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePickerOption({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.12)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: color == AppColors.error
+                          ? AppColors.error
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: color.withValues(alpha: 0.5)),
+          ],
         ),
       ),
     );
