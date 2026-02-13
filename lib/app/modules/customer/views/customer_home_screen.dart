@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/app_input.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/utils/helpers.dart';
@@ -31,133 +32,312 @@ class CustomerHomeScreen extends GetView<CustomerHomeController> {
           );
         }),
       ),
-      bottomNavigationBar: Obx(() => BottomNavigationBar(
-            currentIndex: controller.currentNavIndex.value,
-            onTap: controller.onNavTap,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'ໜ້າຫຼັກ',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_long_outlined),
-                activeIcon: Icon(Icons.receipt_long),
-                label: 'ອໍເດີ',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person),
-                label: 'ບັນຊີ',
+      bottomNavigationBar: _buildBottomNav(),
+      floatingActionButton: _buildCartFab(),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Obx(() => Container(
+          margin: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowStrong.withOpacity(0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+                spreadRadius: -6,
               ),
             ],
-          )),
-      floatingActionButton: Obx(() {
-        final cartCtrl = Get.find<CartController>();
-        if (!cartCtrl.hasItems) return const SizedBox();
-        return FloatingActionButton.extended(
-          onPressed: () => Get.toNamed(AppRoutes.cart),
-          backgroundColor: AppColors.primary,
-          icon: const Icon(Icons.shopping_cart, color: Colors.white),
-          label: Text(
-            '${cartCtrl.itemCount} ລາຍການ',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
-        );
-      }),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BottomNavigationBar(
+              currentIndex: controller.currentNavIndex.value,
+              onTap: controller.onNavTap,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              type: BottomNavigationBarType.fixed,
+              selectedFontSize: 12,
+              unselectedFontSize: 12,
+              items: [
+                _buildNavItem(
+                  Icons.home_rounded,
+                  'ໜ້າຫຼັກ',
+                  controller.currentNavIndex.value == 0,
+                ),
+                _buildNavItem(
+                  Icons.receipt_long_rounded,
+                  'ອໍເດີ',
+                  controller.currentNavIndex.value == 1,
+                ),
+                _buildNavItem(
+                  Icons.person_rounded,
+                  'ບັນຊີ',
+                  controller.currentNavIndex.value == 2,
+                ),
+              ],
+            ),
+          ),
+        ));
+  }
+
+  BottomNavigationBarItem _buildNavItem(
+    IconData icon,
+    String label,
+    bool isSelected,
+  ) {
+    return BottomNavigationBarItem(
+      icon: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(icon),
+      ),
+      label: label,
     );
+  }
+
+  Widget _buildCartFab() {
+    return Obx(() {
+      final cartCtrl = Get.find<CartController>();
+      if (!cartCtrl.hasItems) return const SizedBox();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 100),
+        child: AppFloatingButton(
+          onPressed: () => Get.toNamed(AppRoutes.cart),
+          icon: Icons.shopping_cart_rounded,
+          label: '${cartCtrl.itemCount} ລາຍການ',
+          isExtended: true,
+        ),
+      );
+    });
   }
 
   Widget _buildHomeTab() {
     return CustomScrollView(
       slivers: [
-        // ── Header ──
+        // ── Modern Header with Gradient ──
         SliverToBoxAdapter(
           child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
             decoration: const BoxDecoration(
-              color: AppColors.primary,
+              gradient: LinearGradient(
+                colors: AppColors.primaryGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Address ──
-                GestureDetector(
-                  onTap: () {/* Navigate to address picker */},
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on, color: Colors.white, size: 20),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Obx(() => Text(
-                              controller.userAddress,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            )),
+                // ── Top Row with Location ──
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1,
+                        ),
                       ),
-                      const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
-                    ],
-                  ),
+                      child: const Icon(
+                        Icons.location_on_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ສົ່ງໄປທີ່',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Obx(() => Text(
+                                controller.userAddress,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                
+                const SizedBox(height: 24),
+                
+                // ── Welcome Text ──
                 Obx(() => Text(
                       'ສະບາຍດີ, ${controller.userName}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                       ),
                     )),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'ມື້ນີ້ຢາກກິນຫຍັງ?',
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                const SizedBox(height: 16),
-
-                // ── Search bar ──
-                AppSearchInput(
-                  controller: controller.searchController,
-                  hint: 'ຄົ້ນຫາຮ້ານ ຫຼື ອາຫານ...',
-                  onChanged: controller.searchShops,
+                
+                const SizedBox(height: 24),
+                
+                // ── Modern Search Bar ──
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                        spreadRadius: -4,
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: controller.searchController,
+                    onChanged: controller.searchShops,
+                    decoration: InputDecoration(
+                      hintText: 'ຄົ້ນຫາຮ້ານ ຫຼື ອາຫານ...',
+                      hintStyle: TextStyle(
+                        color: AppColors.textHint,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      prefixIcon: Container(
+                        margin: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.search_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 56,
+                        minHeight: 56,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 20,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
 
-        // ── Categories ──
+        // ── Categories Section ──
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'ໝວດໝູ່',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('ເບິ່ງທັງໝົດ'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Category Chips ──
         SliverToBoxAdapter(
           child: SizedBox(
-            height: 52,
+            height: 58,
             child: Obx(() => ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: controller.categories.length,
                   itemBuilder: (_, i) {
                     final cat = controller.categories[i];
                     final selected = controller.selectedCategory.value == cat;
+                    final categoryColors = [
+                      AppColors.categoryFood,
+                      AppColors.categoryDrink,
+                      AppColors.categoryDessert,
+                      AppColors.categorySnack,
+                      AppColors.categoryHealthy,
+                      AppColors.categoryFastFood,
+                    ];
+                    final color = categoryColors[i % categoryColors.length];
+                    
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: FilterChip(
-                        label: Text(cat),
-                        selected: selected,
-                        onSelected: (_) => controller.selectCategory(cat),
-                        selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                        checkmarkColor: AppColors.primary,
-                        labelStyle: TextStyle(
-                          color: selected ? AppColors.primary : AppColors.textSecondary,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                        ),
+                      padding: const EdgeInsets.only(right: 10),
+                      child: CategoryChip(
+                        label: cat,
+                        isSelected: selected,
+                        onTap: () => controller.selectCategory(cat),
+                        color: color,
                       ),
                     );
                   },
@@ -165,22 +345,53 @@ class CustomerHomeScreen extends GetView<CustomerHomeController> {
           ),
         ),
 
-        // ── Section title ──
-        const SliverToBoxAdapter(
+        // ── Section Title ──
+        SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Text(
-              'ຮ້ານໃກ້ທ່ານ',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'ຮ້ານໃກ້ທ່ານ',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.filter_list_rounded,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'ກອງ',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
 
-        // ── Shop list ──
+        // ── Shop List ──
         Obx(() {
           if (controller.isLoading.value) {
             return const SliverFillRemaining(child: LoadingWidget());
@@ -195,7 +406,7 @@ class CustomerHomeScreen extends GetView<CustomerHomeController> {
             );
           }
           return SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (_, i) => ShopCard(
@@ -211,13 +422,14 @@ class CustomerHomeScreen extends GetView<CustomerHomeController> {
           );
         }),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 80)),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
     );
   }
 
   Widget _buildOrdersTab() {
     return Scaffold(
+      backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('ອໍເດີຂອງຂ້ອຍ'),
         automaticallyImplyLeading: false,
@@ -226,10 +438,44 @@ class CustomerHomeScreen extends GetView<CustomerHomeController> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton.icon(
-              onPressed: () => Get.toNamed(AppRoutes.orderHistory),
-              icon: const Icon(Icons.history),
-              label: const Text('ເບິ່ງປະຫວັດອໍເດີ'),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(
+                Icons.receipt_long_outlined,
+                size: 64,
+                color: AppColors.primary.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'ຍັງບໍ່ມີອໍເດີ',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'ເລີ່ມສັ່ງອາຫານໄດ້ເລີຍ!',
+              style: TextStyle(
+                fontSize: 15,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48),
+              child: AppButton(
+                text: 'ເບິ່ງປະຫວັດອໍເດີ',
+                onPressed: () => Get.toNamed(AppRoutes.orderHistory),
+                icon: Icons.history_rounded,
+              ),
             ),
           ],
         ),
@@ -238,49 +484,255 @@ class CustomerHomeScreen extends GetView<CustomerHomeController> {
   }
 
   Widget _buildProfileTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
-          const CircleAvatar(
-            radius: 44,
-            backgroundColor: AppColors.primary,
-            child: Icon(Icons.person, size: 44, color: Colors.white),
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg,
+      body: CustomScrollView(
+        slivers: [
+          // ── Profile Header ──
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.primaryGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // ── Avatar ──
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(60),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(56),
+                      ),
+                      child: const CircleAvatar(
+                        radius: 52,
+                        backgroundColor: AppColors.surfaceVariant,
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 52,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Obx(() => Text(
+                        controller.userName,
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      )),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.verified_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'ສະມາຊິກ Premium',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
-          Obx(() => Text(
-                controller.userName,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-              )),
-          const SizedBox(height: 32),
-          _profileTile(Icons.location_on_outlined, 'ທີ່ຢູ່ຂອງຂ້ອຍ', () {}),
-          _profileTile(
-              Icons.history, 'ປະຫວັດອໍເດີ', () => Get.toNamed(AppRoutes.orderHistory)),
-          _profileTile(
-              Icons.chat_outlined, 'ແຊັດ', () => Get.toNamed(AppRoutes.chatList)),
-          const Divider(height: 32),
-          _profileTile(Icons.logout, 'ອອກຈາກລະບົບ', () async {
-            final confirm = await Helpers.showConfirmDialog(
-              title: 'ອອກຈາກລະບົບ',
-              message: 'ທ່ານແນ່ໃຈບໍ?',
-            );
-            if (confirm) {
-              Get.find<AuthService>().logout();
-              Get.offAllNamed(AppRoutes.login);
-            }
-          }),
+
+          // ── Quick Actions ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'ເມນູຫຼັກ',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildMenuCard(
+                    Icons.location_on_outlined,
+                    'ທີ່ຢູ່ຂອງຂ້ອຍ',
+                    'ຈັດການທີ່ຢູ່ຈັດສົ່ງ',
+                    AppColors.info,
+                    () {},
+                  ),
+                  _buildMenuCard(
+                    Icons.history_rounded,
+                    'ປະຫວັດອໍເດີ',
+                    'ເບິ່ງອໍເດີທີ່ຜ່ານມາ',
+                    AppColors.success,
+                    () => Get.toNamed(AppRoutes.orderHistory),
+                  ),
+                  _buildMenuCard(
+                    Icons.chat_outlined,
+                    'ການສົນທະນາ',
+                    'ຂໍ້ຄວາມແລະການສົນທະນາ',
+                    AppColors.warning,
+                    () => Get.toNamed(AppRoutes.chatList),
+                  ),
+                  _buildMenuCard(
+                    Icons.favorite_outline,
+                    'ຮ້ານທີ່ມັກ',
+                    'ຮ້ານທີ່ບັນທຶກໄວ້',
+                    AppColors.error,
+                    () {},
+                  ),
+                  _buildMenuCard(
+                    Icons.settings_outlined,
+                    'ການຕັ້ງຄ່າ',
+                    'ຕັ້ງຄ່າແອັບ',
+                    AppColors.secondary,
+                    () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Logout Section ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: AppButton(
+                text: 'ອອກຈາກລະບົບ',
+                onPressed: () async {
+                  final confirm = await Helpers.showConfirmDialog(
+                    title: 'ອອກຈາກລະບົບ',
+                    message: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການອອກຈາກລະບົບ?',
+                  );
+                  if (confirm) {
+                    Get.find<AuthService>().logout();
+                    Get.offAllNamed(AppRoutes.login);
+                  }
+                },
+                isOutlined: true,
+                color: AppColors.error,
+                icon: Icons.logout_rounded,
+              ),
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
   }
 
-  Widget _profileTile(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
+  Widget _buildMenuCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textHint,
+                  size: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
