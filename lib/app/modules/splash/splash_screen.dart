@@ -26,12 +26,14 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _fadeIn = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-    _scale = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _fadeIn = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _scale = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
     _controller.forward();
 
     _navigate();
@@ -88,21 +90,22 @@ class _SplashScreenState extends State<SplashScreen>
                     Container(
                       width: 120,
                       height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.delivery_dining,
-                        color: AppColors.primary,
-                        size: 64,
+                      // decoration: BoxDecoration(
+                      //   color: Colors.white,
+                      //   borderRadius: BorderRadius.circular(32),
+                      //   boxShadow: [
+                      //     BoxShadow(
+                      //       color: Colors.black.withValues(alpha: 0.2),
+                      //       blurRadius: 24,
+                      //       offset: const Offset(0, 8),
+                      //     ),
+                      //   ],
+                      // ),
+                      child: Image.asset(
+                        'assets/logo/logo.png',
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.cover,
                       ),
                     ),
                     const SizedBox(height: 28),

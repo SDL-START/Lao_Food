@@ -124,6 +124,40 @@ class AuthController extends GetxController {
     obscurePassword.value = !obscurePassword.value;
   }
 
+  // ── Google Login ──
+  Future<void> loginWithGoogle() async {
+    isLoading.value = true;
+    try {
+      final user = await _authService.loginWithGoogle();
+      if (user != null) {
+        Log.i('Google login success, role: ${user.role}');
+        Helpers.showSuccess('ເຂົ້າສູ່ລະບົບດ້ວຍ Google ສຳເລັດ!');
+        _navigateByRole(user.role);
+      }
+    } catch (e) {
+      Helpers.showError('ເຂົ້າສູ່ລະບົບດ້ວຍ Google ບໍ່ສຳເລັດ: ${e.toString()}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ── Facebook Login ──
+  Future<void> loginWithFacebook() async {
+    isLoading.value = true;
+    try {
+      final user = await _authService.loginWithFacebook();
+      if (user != null) {
+        Log.i('Facebook login success, role: ${user.role}');
+        Helpers.showSuccess('ເຂົ້າສູ່ລະບົບດ້ວຍ Facebook ສຳເລັດ!');
+        _navigateByRole(user.role);
+      }
+    } catch (e) {
+      Helpers.showError('ເຂົ້າສູ່ລະບົບດ້ວຍ Facebook ບໍ່ສຳເລັດ: ${e.toString()}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   @override
   void onClose() {
     emailController.dispose();

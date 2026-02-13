@@ -223,6 +223,114 @@ class AuthService extends GetxService {
     }
   }
 
+  // ── Google Login ──
+  Future<UserModel?> loginWithGoogle() async {
+    try {
+      // Trigger the authentication flow
+      final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
+      
+      // Once signed in, return the UserCredential
+      final UserCredential result = await _auth.signInWithProvider(googleProvider);
+      
+      if (result.user != null) {
+        // Check if user exists in Firestore
+        final userDoc = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(result.user!.uid)
+            .get();
+        
+        if (!userDoc.exists) {
+          // Create new user if doesn't exist
+          final newUser = UserModel(
+            uid: result.user!.uid,
+            name: result.user!.displayName ?? 'Google User',
+            email: result.user!.email ?? '',
+            phone: result.user!.phoneNumber ?? '',
+            role: AppConstants.roleCustomer,
+            isActive: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          
+          await _firestore
+              .collection(AppConstants.usersCollection)
+              .doc(result.user!.uid)
+              .set(newUser.toMap());
+          
+          currentUser.value = newUser;
+        } else {
+          await _loadUserData(result.user!.uid);
+        }
+        
+        Log.i('Google login success: ${result.user!.email}');
+        return currentUser.value;
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      Log.e('Google login error: ${e.code}');
+      throw _mapAuthError(e.code);
+    } catch (e) {
+      Log.e('Google login error', e);
+      throw 'ເຂົ້າສູ່ລະບົບດ້ວຍ Google ບໍ່ສຳເລັດ';
+    }
+  }
+
+  // ── Facebook Login ──
+  Future<UserModel?> loginWithFacebook() async {
+    try {
+      // Create a new provider
+      final FacebookAuthProvider facebookProvider = FacebookAuthProvider();
+      facebookProvider.addScope('email');
+      facebookProvider.addScope('public_profile');
+      
+      // Once signed in, return the UserCredential
+      final UserCredential result = await _auth.signInWithProvider(facebookProvider);
+      
+      if (result.user != null) {
+        // Check if user exists in Firestore
+        final userDoc = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(result.user!.uid)
+            .get();
+        
+        if (!userDoc.exists) {
+          // Create new user if doesn't exist
+          final newUser = UserModel(
+            uid: result.user!.uid,
+            name: result.user!.displayName ?? 'Facebook User',
+            email: result.user!.email ?? '',
+            phone: result.user!.phoneNumber ?? '',
+            role: AppConstants.roleCustomer,
+            isActive: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          
+          await _firestore
+              .collection(AppConstants.usersCollection)
+              .doc(result.user!.uid)
+              .set(newUser.toMap());
+          
+          currentUser.value = newUser;
+        } else {
+          await _loadUserData(result.user!.uid);
+        }
+        
+        Log.i('Facebook login success: ${result.user!.email}');
+        return currentUser.value;
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      Log.e('Facebook login error: ${e.code}');
+      throw _mapAuthError(e.code);
+    } catch (e) {
+      Log.e('Facebook login error', e);
+      throw 'ເຂົ້າສູ່ລະບົບດ້ວຍ Facebook ບໍ່ສຳເລັດ';
+    }
+  }
+
   String _mapAuthError(String code) {
     switch (code) {
       case 'user-not-found':
@@ -239,6 +347,14 @@ class AuthService extends GetxService {
         return 'ລອງຫຼາຍເກີນໄປ. ກະລຸນາລໍຖ້າ.';
       case 'network-request-failed':
         return 'ບໍ່ມີອິນເຕີເນັດ';
+      case 'account-exists-with-different-credential':
+        return 'ບັນຊີນີ້ມີຢູ່ແລ້ວດ້ວຍວິທີອື່ນ';
+      case 'invalid-credential':
+        return 'ຂໍ້ມູນການເຂົ້າສູ່ລະບົບບໍ່ຖືກຕ້ອງ';
+      case 'operation-not-allowed':
+        return 'ການເຂົ້າສູ່ລະບົບນີ້ຍັງບໍ່ໄດ້ເປີດໃຊ້ງານ';
+      case 'user-disabled':
+        return 'ບັນຊີນີ້ຖືກປິດໃຊ້ງານ';
       default:
         return 'ເກີດຂໍ້ຜິດພາດ ($code)';
     }

@@ -27,8 +27,8 @@ class LoginScreen extends GetView<AuthController> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.3),
-                    AppColors.primary.withOpacity(0),
+                    AppColors.primary.withValues(alpha: 0.3),
+                    AppColors.primary.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -44,8 +44,8 @@ class LoginScreen extends GetView<AuthController> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.secondary.withOpacity(0.2),
-                    AppColors.secondary.withOpacity(0),
+                    AppColors.secondary.withValues(alpha: 0.2),
+                    AppColors.secondary.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -71,22 +71,22 @@ class LoginScreen extends GetView<AuthController> {
                           Container(
                             width: 120,
                             height: 120,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(32),
-                              gradient: const LinearGradient(
-                                colors: AppColors.primaryGradient,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.4),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 15),
-                                  spreadRadius: -5,
-                                ),
-                              ],
-                            ),
+                            // decoration: BoxDecoration(
+                            //   borderRadius: BorderRadius.circular(32),
+                            //   gradient: const LinearGradient(
+                            //     colors: AppColors.primaryGradient,
+                            //     begin: Alignment.topLeft,
+                            //     end: Alignment.bottomRight,
+                            //   ),
+                            //   boxShadow: [
+                            //     BoxShadow(
+                            //       color: AppColors.primary.withValues(alpha: 0.4),
+                            //       blurRadius: 30,
+                            //       offset: const Offset(0, 15),
+                            //       spreadRadius: -5,
+                            //     ),
+                            //   ],
+                            // ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(32),
                               child: Padding(
@@ -133,7 +133,7 @@ class LoginScreen extends GetView<AuthController> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
@@ -246,7 +246,7 @@ class LoginScreen extends GetView<AuthController> {
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
 
                     // ── Divider ──
                     Row(
@@ -264,10 +264,10 @@ class LoginScreen extends GetView<AuthController> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
-                            'ຫຼື',
+                            'ຫຼືເຂົ້າສູ່ລະບົບດ້ວຍ',
                             style: TextStyle(
                               color: AppColors.textHint,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -285,27 +285,31 @@ class LoginScreen extends GetView<AuthController> {
                       ],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
 
                     // ── Social Login Buttons ──
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSocialButton(
-                            Icons.g_mobiledata_rounded,
-                            'Google',
-                            () {},
+                    Obx(
+                      () => Row(
+                        children: [
+                          Expanded(
+                            child: _buildSocialButton(
+                              'Google',
+                              const Color(0xFF4285F4),
+                              () => controller.loginWithGoogle(),
+                              isLoading: controller.isLoading.value,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildSocialButton(
-                            Icons.facebook_rounded,
-                            'Facebook',
-                            () {},
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildSocialButton(
+                              'Facebook',
+                              const Color(0xFF1877F2),
+                              () => controller.loginWithFacebook(),
+                              isLoading: controller.isLoading.value,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 40),
@@ -330,7 +334,7 @@ class LoginScreen extends GetView<AuthController> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
@@ -381,20 +385,25 @@ class LoginScreen extends GetView<AuthController> {
     );
   }
 
-  Widget _buildSocialButton(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildSocialButton(
+    String label,
+    Color color,
+    VoidCallback onTap, {
+    bool isLoading = false,
+  }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        height: 56,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.divider, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadow.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
               spreadRadius: -2,
             ),
           ],
@@ -402,8 +411,18 @@ class LoginScreen extends GetView<AuthController> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 24, color: AppColors.textPrimary),
-            const SizedBox(width: 10),
+            // ── Social Icon Container ──
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(child: _buildSocialIcon(label)),
+            ),
+            const SizedBox(width: 12),
+            // ── Label ──
             Text(
               label,
               style: const TextStyle(
@@ -417,4 +436,57 @@ class LoginScreen extends GetView<AuthController> {
       ),
     );
   }
+
+  Widget _buildSocialIcon(String provider) {
+    if (provider == 'Google') {
+      return CustomPaint(
+        size: const Size(18, 18),
+        painter: GoogleIconPainter(),
+      );
+    } else if (provider == 'Facebook') {
+      return const Icon(Icons.facebook_rounded, color: Colors.white, size: 22);
+    }
+    return const Icon(Icons.login_rounded, color: Colors.white, size: 18);
+  }
+}
+
+// ── Custom Google Icon Painter ──
+class GoogleIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.white;
+
+    // Simple white circle background with G letter
+    canvas.drawCircle(
+      Offset(size.width * 0.5, size.height * 0.5),
+      size.width * 0.4,
+      paint,
+    );
+
+    // Draw G letter
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'G',
+        style: TextStyle(
+          color: Color(0xFF4285F4),
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size.width - textPainter.width) / 2,
+        (size.height - textPainter.height) / 2,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
