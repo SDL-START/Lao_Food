@@ -31,21 +31,22 @@ class LoginScreen extends GetView<AuthController> {
                       Container(
                         width: 90,
                         height: 90,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.delivery_dining,
-                          color: Colors.white,
-                          size: 48,
+                        // decoration: BoxDecoration(
+                        //   color: AppColors.primary,
+                        //   borderRadius: BorderRadius.circular(24),
+                        //   boxShadow: [
+                        //     BoxShadow(
+                        //       color: AppColors.primary.withValues(alpha: 0.3),
+                        //       blurRadius: 20,
+                        //       offset: const Offset(0, 8),
+                        //     ),
+                        //   ],
+                        // ),
+                        child: Image.asset(
+                          'assets/logo/logo.png',
+                          fit: BoxFit.cover,
+                          width: 48,
+                          height: 48,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -86,24 +87,26 @@ class LoginScreen extends GetView<AuthController> {
                 const SizedBox(height: 20),
 
                 // ── Password ──
-                Obx(() => AppInput(
-                      controller: controller.passwordController,
-                      label: 'ລະຫັດຜ່ານ',
-                      hint: '••••••••',
-                      prefixIcon: Icons.lock_outline,
-                      obscureText: controller.obscurePassword.value,
-                      validator: Helpers.validatePassword,
-                      textInputAction: TextInputAction.done,
-                      suffix: IconButton(
-                        icon: Icon(
-                          controller.obscurePassword.value
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: AppColors.textSecondary,
-                        ),
-                        onPressed: controller.togglePasswordVisibility,
+                Obx(
+                  () => AppInput(
+                    controller: controller.passwordController,
+                    label: 'ລະຫັດຜ່ານ',
+                    hint: '••••••••',
+                    prefixIcon: Icons.lock_outline,
+                    obscureText: controller.obscurePassword.value,
+                    validator: Helpers.validatePassword,
+                    textInputAction: TextInputAction.done,
+                    suffix: IconButton(
+                      icon: Icon(
+                        controller.obscurePassword.value
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: AppColors.textSecondary,
                       ),
-                    )),
+                      onPressed: controller.togglePasswordVisibility,
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 12),
 
@@ -119,12 +122,14 @@ class LoginScreen extends GetView<AuthController> {
                 const SizedBox(height: 24),
 
                 // ── Login button ──
-                Obx(() => AppButton(
-                      text: 'ເຂົ້າສູ່ລະບົບ',
-                      onPressed: controller.login,
-                      isLoading: controller.isLoading.value,
-                      icon: Icons.login,
-                    )),
+                Obx(
+                  () => AppButton(
+                    text: 'ເຂົ້າສູ່ລະບົບ',
+                    onPressed: controller.login,
+                    isLoading: controller.isLoading.value,
+                    icon: Icons.login,
+                  ),
+                ),
 
                 const SizedBox(height: 32),
 
