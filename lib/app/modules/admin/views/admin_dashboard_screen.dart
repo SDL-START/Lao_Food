@@ -74,17 +74,6 @@ class AdminDashboardScreen extends GetView<AdminController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Admin Dashboard',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'ພາບລວມລະບົບ',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
-
             // ── Stats grid ──
             Obx(
               () => GridView.count(

@@ -235,7 +235,12 @@ class AuthService extends GetxService {
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(uid)
-          .update({'fcmToken': token});
+          .set({
+            'fcmToken': token,
+            'updatedAt': DateTime.now(),
+          }, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      Log.e('Update FCM token error: ${e.code}', e);
     } catch (e) {
       Log.e('Update FCM token error', e);
     }

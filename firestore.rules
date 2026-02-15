@@ -56,6 +56,11 @@ service cloud.firestore {
                     && request.auth.uid == userId
                     && request.resource.data.role in ['customer', 'admin'];
 
+      // Allow owner to update notification token safely
+      allow update: if isOwner(userId)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['fcmToken', 'updatedAt']);
+
       // User ອັບເດດ profile ຂອງຕົນເອງ (fcmToken, isOnline, location)
       allow update: if isOwner(userId)
                     && !request.resource.data.diff(resource.data).affectedKeys()
