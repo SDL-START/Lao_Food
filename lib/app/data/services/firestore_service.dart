@@ -280,6 +280,60 @@ class FirestoreService extends GetxService {
   }
 
   // ═══════════════════════════════════════════
+  //  RIDERS (role-specific collection)
+  // ═══════════════════════════════════════════
+
+  Stream<List<UserModel>> getAllRiders() {
+    return _db
+        .collection(AppConstants.ridersCollection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>))
+            .toList());
+  }
+
+  Future<void> updateRider(String uid, Map<String, dynamic> data) async {
+    try {
+      data['updatedAt'] = DateTime.now();
+      await _db
+          .collection(AppConstants.ridersCollection)
+          .doc(uid)
+          .update(data);
+    } catch (e) {
+      Log.e('Error updating rider', e);
+      rethrow;
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  //  SHOP OWNERS (role-specific collection)
+  // ═══════════════════════════════════════════
+
+  Stream<List<UserModel>> getAllShopOwners() {
+    return _db
+        .collection(AppConstants.shopOwnersCollection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>))
+            .toList());
+  }
+
+  Future<void> updateShopOwner(String uid, Map<String, dynamic> data) async {
+    try {
+      data['updatedAt'] = DateTime.now();
+      await _db
+          .collection(AppConstants.shopOwnersCollection)
+          .doc(uid)
+          .update(data);
+    } catch (e) {
+      Log.e('Error updating shop owner', e);
+      rethrow;
+    }
+  }
+
+  // ═══════════════════════════════════════════
   //  REVIEWS
   // ═══════════════════════════════════════════
 

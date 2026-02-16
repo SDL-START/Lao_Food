@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/order_status.dart';
 import '../../../core/utils/helpers.dart';
@@ -8,19 +10,24 @@ import '../../../data/models/shop_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/firestore_service.dart';
+import '../../../data/services/storage_service.dart';
 
 class AdminController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final FirestoreService _firestoreService = Get.find<FirestoreService>();
+  final StorageService _storageService = Get.find<StorageService>();
 
   final RxInt currentNavIndex = 0.obs;
   final RxList<UserModel> allUsers = <UserModel>[].obs;
   final RxList<UserModel> customers = <UserModel>[].obs;
   final RxList<UserModel> riders = <UserModel>[].obs;
   final RxList<UserModel> shopOwners = <UserModel>[].obs;
+  final RxList<UserModel> ridersList = <UserModel>[].obs;
+  final RxList<UserModel> shopOwnersList = <UserModel>[].obs;
   final RxList<ShopModel> allShops = <ShopModel>[].obs;
   final RxList<OrderModel> allOrders = <OrderModel>[].obs;
   final RxBool isLoading = true.obs;
+  final RxBool isUpdating = false.obs;
 
   @override
   void onInit() {
@@ -31,13 +38,25 @@ class AdminController extends GetxController {
   void _loadData() {
     _firestoreService.getAllUsers().listen((list) {
       allUsers.value = list;
-      customers.value =
-          list.where((u) => u.role == AppConstants.roleCustomer).toList();
-      riders.value =
-          list.where((u) => u.role == AppConstants.roleRider).toList();
-      shopOwners.value =
-          list.where((u) => u.role == AppConstants.roleShop).toList();
+      customers.value = list
+          .where((u) => u.role == AppConstants.roleCustomer)
+          .toList();
+      riders.value = list
+          .where((u) => u.role == AppConstants.roleRider)
+          .toList();
+      shopOwners.value = list
+          .where((u) => u.role == AppConstants.roleShop)
+          .toList();
       isLoading.value = false;
+    });
+
+    // Listen to role-specific collections
+    _firestoreService.getAllRiders().listen((list) {
+      ridersList.value = list;
+    });
+
+    _firestoreService.getAllShopOwners().listen((list) {
+      shopOwnersList.value = list;
     });
 
     _firestoreService.getShops(onlyActive: false).listen((list) {
@@ -54,8 +73,7 @@ class AdminController extends GetxController {
   int get totalShops => allShops.length;
   int get totalRiders => riders.length;
   int get totalOrders => allOrders.length;
-  int get activeOrders =>
-      allOrders.where((o) => o.orderStatus.isActive).length;
+  int get activeOrders => allOrders.where((o) => o.orderStatus.isActive).length;
   double get totalRevenue => allOrders
       .where((o) => o.status == OrderStatus.delivered.value)
       .fold(0.0, (sum, o) => sum + o.total);
@@ -65,9 +83,10 @@ class AdminController extends GetxController {
   // ── User Management ──
   Future<void> toggleUserActive(UserModel user) async {
     try {
-      await _firestoreService.updateUser(user.uid, {
-        'isActive': !user.isActive,
-      });
+      final data = {'isActive': !user.isActive};
+      await _firestoreService.updateUser(user.uid, Map.of(data));
+      // Sync role-specific collection
+      await _syncRoleCollection(user.uid, user.role, Map.of(data));
       Helpers.showSuccess(user.isActive ? 'ລະງັບແລ້ວ' : 'ເປີດໃຊ້ງານແລ້ວ');
       Log.i('User ${user.uid} active: ${!user.isActive}');
     } catch (e) {
@@ -77,21 +96,38 @@ class AdminController extends GetxController {
 
   Future<void> verifyUser(UserModel user) async {
     try {
-      await _firestoreService.updateUser(user.uid, {'isVerified': true});
+      final data = {'isVerified': true};
+      await _firestoreService.updateUser(user.uid, Map.of(data));
+      // Sync role-specific collection
+      await _syncRoleCollection(user.uid, user.role, Map.of(data));
       Helpers.showSuccess('ຢືນຢັນແລ້ວ');
     } catch (e) {
       Helpers.showError('ຢືນຢັນບໍ່ສຳເລັດ');
     }
   }
 
+  /// Syncs data changes to the role-specific collection (riders / shop_owners).
+  Future<void> _syncRoleCollection(
+    String uid,
+    String role,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      if (role == AppConstants.roleRider) {
+        await _firestoreService.updateRider(uid, data);
+      } else if (role == AppConstants.roleShop) {
+        await _firestoreService.updateShopOwner(uid, data);
+      }
+    } catch (e) {
+      Log.e('Error syncing role collection ($role)', e);
+    }
+  }
+
   // ── Shop Management ──
   Future<void> toggleShopActive(ShopModel shop) async {
     try {
-      await _firestoreService.updateShop(shop.id, {
-        'isActive': !shop.isActive,
-      });
-      Helpers.showSuccess(
-          shop.isActive ? 'ປິດຮ້ານແລ້ວ' : 'ເປີດຮ້ານແລ້ວ');
+      await _firestoreService.updateShop(shop.id, {'isActive': !shop.isActive});
+      Helpers.showSuccess(shop.isActive ? 'ປິດຮ້ານແລ້ວ' : 'ເປີດຮ້ານແລ້ວ');
     } catch (e) {
       Helpers.showError('ອັບເດດບໍ່ສຳເລັດ');
     }
@@ -116,7 +152,7 @@ class AdminController extends GetxController {
   }
 
   // ── Create Shop/Rider user ──
-  Future<void> createUser({
+  Future<bool> createUser({
     required String name,
     required String email,
     required String phone,
@@ -125,7 +161,7 @@ class AdminController extends GetxController {
     String? shopId,
   }) async {
     try {
-      await _authService.createUserByAdmin(
+      final createdUser = await _authService.createUserByAdmin(
         name: name,
         email: email,
         phone: phone,
@@ -133,9 +169,14 @@ class AdminController extends GetxController {
         role: role,
         shopId: shopId,
       );
-      Helpers.showSuccess('ສ້າງບັນຊີແລ້ວ');
+      if (createdUser == null) {
+        Helpers.showError('ສ້າງບັນຊີບໍ່ສຳເລັດ');
+        return false;
+      }
+      return true;
     } catch (e) {
       Helpers.showError(e.toString());
+      return false;
     }
   }
 
@@ -153,5 +194,115 @@ class AdminController extends GetxController {
 
   void onNavTap(int index) {
     currentNavIndex.value = index;
+  }
+
+  // ── Admin profile ──
+  UserModel? get adminUser => _authService.currentUser.value;
+
+  Future<void> updateAdminField(String field, String value) async {
+    if (adminUser == null) return;
+    try {
+      isUpdating.value = true;
+      await _firestoreService.updateUser(adminUser!.uid, {field: value.trim()});
+      await _authService.refreshUser();
+      Helpers.showSuccess('ອັບເດດສຳເລັດ');
+      Log.i('Admin profile $field updated');
+    } catch (e) {
+      Helpers.showError('ອັບເດດບໍ່ສຳເລັດ');
+      Log.e('Error updating admin $field', e);
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  Future<void> updateProfileImage(ImageSource source) async {
+    if (adminUser == null) return;
+    try {
+      final file = await _storageService.pickImage(source: source);
+      if (file == null) return;
+
+      isUpdating.value = true;
+
+      // Delete old image if exists
+      if (adminUser!.profileImage != null &&
+          adminUser!.profileImage!.isNotEmpty) {
+        await _storageService.deleteImage(adminUser!.profileImage!);
+      }
+
+      // Upload new image
+      final url = await _storageService.uploadImage(
+        file,
+        AppConstants.profileImagesPath,
+      );
+
+      if (url != null) {
+        await _firestoreService.updateUser(adminUser!.uid, {
+          'profileImage': url,
+        });
+        await _authService.refreshUser();
+        Helpers.showSuccess('ອັບເດດຮູບໂປຣໄຟລ໌ສຳເລັດ');
+        Log.i('Admin profile image updated');
+      } else {
+        Helpers.showError('ອັບໂຫຼດຮູບບໍ່ສຳເລັດ');
+      }
+    } catch (e) {
+      Helpers.showError('ອັບເດດຮູບບໍ່ສຳເລັດ');
+      Log.e('Error updating profile image', e);
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  Future<void> removeProfileImage() async {
+    if (adminUser == null) return;
+    try {
+      isUpdating.value = true;
+
+      if (adminUser!.profileImage != null &&
+          adminUser!.profileImage!.isNotEmpty) {
+        await _storageService.deleteImage(adminUser!.profileImage!);
+      }
+
+      await _firestoreService.updateUser(adminUser!.uid, {
+        'profileImage': null,
+      });
+      await _authService.refreshUser();
+      Helpers.showSuccess('ລຶບຮູບໂປຣໄຟລ໌ແລ້ວ');
+      Log.i('Admin profile image removed');
+    } catch (e) {
+      Helpers.showError('ລຶບຮູບບໍ່ສຳເລັດ');
+      Log.e('Error removing profile image', e);
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      isUpdating.value = true;
+      final user = _authService.user;
+      if (user == null || user.email == null) return;
+
+      // Re-authenticate
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        ),
+      );
+
+      // Update password
+      await user.updatePassword(newPassword);
+      Helpers.showSuccess('ປ່ຽນລະຫັດຜ່ານສຳເລັດ');
+      Log.i('Admin password changed');
+    } catch (e) {
+      Helpers.showError('ລະຫັດຜ່ານເກົ່າບໍ່ຖືກຕ້ອງ');
+      Log.e('Error changing password', e);
+    } finally {
+      isUpdating.value = false;
+    }
   }
 }

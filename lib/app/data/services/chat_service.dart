@@ -39,10 +39,9 @@ class ChatService extends GetxService {
           .set(room.toMap());
 
       // Update order with chatId
-      await _db
-          .collection(AppConstants.ordersCollection)
-          .doc(orderId)
-          .update({'chatId': chatId});
+      await _db.collection(AppConstants.ordersCollection).doc(orderId).update({
+        'chatId': chatId,
+      });
 
       Log.i('Chat room created: $chatId for order: $orderId');
       return chatId;
@@ -83,13 +82,9 @@ class ChatService extends GetxService {
           .set(message.toMap());
 
       // Update last message on room
-      await _db
-          .collection(AppConstants.chatsCollection)
-          .doc(chatRoomId)
-          .update({
-        'lastMessage': text,
-        'lastMessageAt': DateTime.now(),
-      });
+      await _db.collection(AppConstants.chatsCollection).doc(chatRoomId).update(
+        {'lastMessage': text, 'lastMessageAt': DateTime.now()},
+      );
 
       Log.d('Message sent in: $chatRoomId');
     } catch (e) {
@@ -106,9 +101,10 @@ class ChatService extends GetxService {
         .collection(AppConstants.messagesCollection)
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ChatMessage.fromMap(d.data()))
-            .toList());
+        .map(
+          (snap) =>
+              snap.docs.map((d) => ChatMessage.fromMap(d.data())).toList(),
+        );
   }
 
   /// ── Stream chat rooms for user ──
@@ -118,22 +114,25 @@ class ChatService extends GetxService {
         .where('isActive', isEqualTo: true)
         .orderBy('lastMessageAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ChatRoom.fromMap(d.data() as Map<String, dynamic>))
-            .where((room) =>
-                room.customerId == userId ||
-                room.riderId == userId ||
-                room.shopId == userId)
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((d) => ChatRoom.fromMap(d.data() as Map<String, dynamic>))
+              .where(
+                (room) =>
+                    room.customerId == userId ||
+                    room.riderId == userId ||
+                    room.shopId == userId,
+              )
+              .toList(),
+        );
   }
 
   /// ── Mark messages as read ──
   Future<void> markAsRead(String chatRoomId, String userId) async {
     try {
-      await _db
-          .collection(AppConstants.chatsCollection)
-          .doc(chatRoomId)
-          .update({'unreadCount.$userId': 0});
+      await _db.collection(AppConstants.chatsCollection).doc(chatRoomId).update(
+        {'unreadCount.$userId': 0},
+      );
     } catch (e) {
       Log.e('Error marking as read', e);
     }
@@ -142,10 +141,9 @@ class ChatService extends GetxService {
   /// ── Close chat room ──
   Future<void> closeChatRoom(String chatRoomId) async {
     try {
-      await _db
-          .collection(AppConstants.chatsCollection)
-          .doc(chatRoomId)
-          .update({'isActive': false});
+      await _db.collection(AppConstants.chatsCollection).doc(chatRoomId).update(
+        {'isActive': false},
+      );
     } catch (e) {
       Log.e('Error closing chat room', e);
     }

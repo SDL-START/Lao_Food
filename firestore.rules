@@ -56,6 +56,11 @@ service cloud.firestore {
                     && request.auth.uid == userId
                     && request.resource.data.role in ['customer', 'admin'];
 
+      // Allow owner to update notification token safely
+      allow update: if isOwner(userId)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['fcmToken', 'updatedAt']);
+
       // User ອັບເດດ profile ຂອງຕົນເອງ (fcmToken, isOnline, location)
       allow update: if isOwner(userId)
                     && !request.resource.data.diff(resource.data).affectedKeys()
@@ -68,6 +73,38 @@ service cloud.firestore {
       allow create: if isAdmin();
 
       // ບໍ່ອະນຸຍາດລົບ user
+      allow delete: if false;
+    }
+
+    // ============================
+    // RIDERS Collection (role-specific)
+    // ============================
+    match /riders/{userId} {
+      // Admin ອ່ານ/ສ້າງ/ອັບເດດໄດ້ໝົດ
+      allow read, create, update: if isAdmin();
+
+      // Rider ອ່ານ/ອັບເດດ ຂໍ້ມູນຂອງຕົນເອງ
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['role', 'uid', 'email', 'createdAt']);
+
+      allow delete: if false;
+    }
+
+    // ============================
+    // SHOP_OWNERS Collection (role-specific)
+    // ============================
+    match /shop_owners/{userId} {
+      // Admin ອ່ານ/ສ້າງ/ອັບເດດໄດ້ໝົດ
+      allow read, create, update: if isAdmin();
+
+      // Shop owner ອ່ານ/ອັບເດດ ຂໍ້ມູນຂອງຕົນເອງ
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['role', 'uid', 'email', 'createdAt']);
+
       allow delete: if false;
     }
 
