@@ -77,6 +77,38 @@ service cloud.firestore {
     }
 
     // ============================
+    // RIDERS Collection (role-specific)
+    // ============================
+    match /riders/{userId} {
+      // Admin ອ່ານ/ສ້າງ/ອັບເດດໄດ້ໝົດ
+      allow read, create, update: if isAdmin();
+
+      // Rider ອ່ານ/ອັບເດດ ຂໍ້ມູນຂອງຕົນເອງ
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['role', 'uid', 'email', 'createdAt']);
+
+      allow delete: if false;
+    }
+
+    // ============================
+    // SHOP_OWNERS Collection (role-specific)
+    // ============================
+    match /shop_owners/{userId} {
+      // Admin ອ່ານ/ສ້າງ/ອັບເດດໄດ້ໝົດ
+      allow read, create, update: if isAdmin();
+
+      // Shop owner ອ່ານ/ອັບເດດ ຂໍ້ມູນຂອງຕົນເອງ
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['role', 'uid', 'email', 'createdAt']);
+
+      allow delete: if false;
+    }
+
+    // ============================
     // SHOPS Collection
     // ============================
     match /shops/{shopId} {

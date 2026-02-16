@@ -169,11 +169,23 @@ class AdminDashboardScreen extends GetView<AdminController> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            _actionTile(Icons.person_add, 'ເພີ່ມ Rider', () {
-              Get.toNamed(AppRoutes.adminAddUser, arguments: 'rider');
+            _actionTile(Icons.person_add, 'ເພີ່ມ Rider', () async {
+              final result = await Get.toNamed(
+                AppRoutes.adminAddUser,
+                arguments: 'rider',
+              );
+              if (result == true) {
+                Helpers.showSuccess('ເພີ່ມ Rider ສຳເລັດແລ້ວ');
+              }
             }),
-            _actionTile(Icons.store, 'ເພີ່ມຮ້ານ', () {
-              Get.toNamed(AppRoutes.adminAddUser, arguments: 'shop');
+            _actionTile(Icons.store, 'ເພີ່ມຮ້ານ', () async {
+              final result = await Get.toNamed(
+                AppRoutes.adminAddUser,
+                arguments: 'shop',
+              );
+              if (result == true) {
+                Helpers.showSuccess('ເພີ່ມຮ້ານສຳເລັດແລ້ວ');
+              }
             }),
           ],
         ),

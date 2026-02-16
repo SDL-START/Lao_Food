@@ -128,20 +128,18 @@ class _AdminAddUserScreenState extends State<AdminAddUserScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     _isLoading.value = true;
-    try {
-      final adminCtrl = Get.find<AdminController>();
-      await adminCtrl.createUser(
-        name: _nameCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
-        password: _passwordCtrl.text,
-        role: role,
-      );
-      Get.back();
-    } catch (e) {
-      Helpers.showError(e.toString());
-    } finally {
-      _isLoading.value = false;
+    final adminCtrl = Get.find<AdminController>();
+    final created = await adminCtrl.createUser(
+      name: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      password: _passwordCtrl.text,
+      role: role,
+    );
+    _isLoading.value = false;
+
+    if (created) {
+      Get.back(result: true);
     }
   }
 

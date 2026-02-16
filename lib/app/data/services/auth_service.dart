@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/logger_utils.dart';
@@ -40,7 +41,9 @@ class AuthService extends GetxService {
           .get();
       if (doc.exists) {
         currentUser.value = UserModel.fromMap(doc.data()!);
-        Log.i('User loaded: ${currentUser.value?.name} (${currentUser.value?.role})');
+        Log.i(
+          'User loaded: ${currentUser.value?.name} (${currentUser.value?.role})',
+        );
       }
     } catch (e) {
       Log.e('Error loading user data', e);
@@ -164,14 +167,25 @@ class AuthService extends GetxService {
     required String role,
     String? shopId,
   }) async {
+    FirebaseApp? secondaryApp;
+    User? createdUser;
     try {
-      // Create auth user
-      final result = await _auth.createUserWithEmailAndPassword(
+      // Use a secondary auth instance so current admin session is not replaced.
+      final appName =
+          'admin-create-user-${DateTime.now().millisecondsSinceEpoch}';
+      secondaryApp = await Firebase.initializeApp(
+        name: appName,
+        options: Firebase.app().options,
+      );
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      final result = await secondaryAuth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
 
       if (result.user != null) {
+        createdUser = result.user;
         final user = UserModel(
           uid: result.user!.uid,
           name: name.trim(),
@@ -190,13 +204,42 @@ class AuthService extends GetxService {
             .doc(user.uid)
             .set(user.toMap());
 
+        // Save to role-specific collection
+        final roleCollection = _getRoleCollection(role);
+        if (roleCollection != null) {
+          await _firestore
+              .collection(roleCollection)
+              .doc(user.uid)
+              .set(user.toMap());
+          Log.i('Saved to role collection: $roleCollection');
+        }
+
         Log.i('Admin created user: ${user.name} ($role)');
+        await secondaryAuth.signOut();
         return user;
       }
       return null;
     } on FirebaseAuthException catch (e) {
       Log.e('Create user error: ${e.code}');
       throw _mapAuthError(e.code);
+    } on FirebaseException catch (e) {
+      // Rollback orphan auth account when profile write fails.
+      if (createdUser != null) {
+        try {
+          await createdUser.delete();
+        } catch (e) {
+          Log.e('Delete user error', e);
+        }
+      }
+      Log.e('Create user profile error: ${e.code}', e);
+      throw 'ສ້າງໂປຣໄຟລ໌ຜູ້ໃຊ້ບໍ່ສຳເລັດ';
+    } catch (e) {
+      Log.e('Create user unexpected error', e);
+      rethrow;
+    } finally {
+      if (secondaryApp != null) {
+        await secondaryApp.delete();
+      }
     }
   }
 
@@ -232,13 +275,10 @@ class AuthService extends GetxService {
   Future<void> updateFcmToken(String token) async {
     if (uid.isEmpty) return;
     try {
-      await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .set({
-            'fcmToken': token,
-            'updatedAt': DateTime.now(),
-          }, SetOptions(merge: true));
+      await _firestore.collection(AppConstants.usersCollection).doc(uid).set({
+        'fcmToken': token,
+        'updatedAt': DateTime.now(),
+      }, SetOptions(merge: true));
     } on FirebaseException catch (e) {
       Log.e('Update FCM token error: ${e.code}', e);
     } catch (e) {
@@ -276,17 +316,19 @@ class AuthService extends GetxService {
       final GoogleAuthProvider googleProvider = GoogleAuthProvider();
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
-      
+
       // Once signed in, return the UserCredential
-      final UserCredential result = await _auth.signInWithProvider(googleProvider);
-      
+      final UserCredential result = await _auth.signInWithProvider(
+        googleProvider,
+      );
+
       if (result.user != null) {
         // Check if user exists in Firestore
         final userDoc = await _firestore
             .collection(AppConstants.usersCollection)
             .doc(result.user!.uid)
             .get();
-        
+
         if (!userDoc.exists) {
           // Create new user if doesn't exist
           final newUser = UserModel(
@@ -299,17 +341,17 @@ class AuthService extends GetxService {
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
-          
+
           await _firestore
               .collection(AppConstants.usersCollection)
               .doc(result.user!.uid)
               .set(newUser.toMap());
-          
+
           currentUser.value = newUser;
         } else {
           await _loadUserData(result.user!.uid);
         }
-        
+
         Log.i('Google login success: ${result.user!.email}');
         return currentUser.value;
       }
@@ -330,17 +372,19 @@ class AuthService extends GetxService {
       final FacebookAuthProvider facebookProvider = FacebookAuthProvider();
       facebookProvider.addScope('email');
       facebookProvider.addScope('public_profile');
-      
+
       // Once signed in, return the UserCredential
-      final UserCredential result = await _auth.signInWithProvider(facebookProvider);
-      
+      final UserCredential result = await _auth.signInWithProvider(
+        facebookProvider,
+      );
+
       if (result.user != null) {
         // Check if user exists in Firestore
         final userDoc = await _firestore
             .collection(AppConstants.usersCollection)
             .doc(result.user!.uid)
             .get();
-        
+
         if (!userDoc.exists) {
           // Create new user if doesn't exist
           final newUser = UserModel(
@@ -353,17 +397,17 @@ class AuthService extends GetxService {
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
-          
+
           await _firestore
               .collection(AppConstants.usersCollection)
               .doc(result.user!.uid)
               .set(newUser.toMap());
-          
+
           currentUser.value = newUser;
         } else {
           await _loadUserData(result.user!.uid);
         }
-        
+
         Log.i('Facebook login success: ${result.user!.email}');
         return currentUser.value;
       }
@@ -374,6 +418,18 @@ class AuthService extends GetxService {
     } catch (e) {
       Log.e('Facebook login error', e);
       throw 'ເຂົ້າສູ່ລະບົບດ້ວຍ Facebook ບໍ່ສຳເລັດ';
+    }
+  }
+
+  /// Returns the Firestore collection name for a given role, or null if none.
+  String? _getRoleCollection(String role) {
+    switch (role) {
+      case AppConstants.roleRider:
+        return AppConstants.ridersCollection;
+      case AppConstants.roleShop:
+        return AppConstants.shopOwnersCollection;
+      default:
+        return null;
     }
   }
 

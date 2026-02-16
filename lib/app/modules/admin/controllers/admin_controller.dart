@@ -22,6 +22,8 @@ class AdminController extends GetxController {
   final RxList<UserModel> customers = <UserModel>[].obs;
   final RxList<UserModel> riders = <UserModel>[].obs;
   final RxList<UserModel> shopOwners = <UserModel>[].obs;
+  final RxList<UserModel> ridersList = <UserModel>[].obs;
+  final RxList<UserModel> shopOwnersList = <UserModel>[].obs;
   final RxList<ShopModel> allShops = <ShopModel>[].obs;
   final RxList<OrderModel> allOrders = <OrderModel>[].obs;
   final RxBool isLoading = true.obs;
@@ -48,6 +50,15 @@ class AdminController extends GetxController {
       isLoading.value = false;
     });
 
+    // Listen to role-specific collections
+    _firestoreService.getAllRiders().listen((list) {
+      ridersList.value = list;
+    });
+
+    _firestoreService.getAllShopOwners().listen((list) {
+      shopOwnersList.value = list;
+    });
+
     _firestoreService.getShops(onlyActive: false).listen((list) {
       allShops.value = list;
     });
@@ -72,9 +83,10 @@ class AdminController extends GetxController {
   // ── User Management ──
   Future<void> toggleUserActive(UserModel user) async {
     try {
-      await _firestoreService.updateUser(user.uid, {
-        'isActive': !user.isActive,
-      });
+      final data = {'isActive': !user.isActive};
+      await _firestoreService.updateUser(user.uid, Map.of(data));
+      // Sync role-specific collection
+      await _syncRoleCollection(user.uid, user.role, Map.of(data));
       Helpers.showSuccess(user.isActive ? 'ລະງັບແລ້ວ' : 'ເປີດໃຊ້ງານແລ້ວ');
       Log.i('User ${user.uid} active: ${!user.isActive}');
     } catch (e) {
@@ -84,10 +96,30 @@ class AdminController extends GetxController {
 
   Future<void> verifyUser(UserModel user) async {
     try {
-      await _firestoreService.updateUser(user.uid, {'isVerified': true});
+      final data = {'isVerified': true};
+      await _firestoreService.updateUser(user.uid, Map.of(data));
+      // Sync role-specific collection
+      await _syncRoleCollection(user.uid, user.role, Map.of(data));
       Helpers.showSuccess('ຢືນຢັນແລ້ວ');
     } catch (e) {
       Helpers.showError('ຢືນຢັນບໍ່ສຳເລັດ');
+    }
+  }
+
+  /// Syncs data changes to the role-specific collection (riders / shop_owners).
+  Future<void> _syncRoleCollection(
+    String uid,
+    String role,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      if (role == AppConstants.roleRider) {
+        await _firestoreService.updateRider(uid, data);
+      } else if (role == AppConstants.roleShop) {
+        await _firestoreService.updateShopOwner(uid, data);
+      }
+    } catch (e) {
+      Log.e('Error syncing role collection ($role)', e);
     }
   }
 
@@ -120,7 +152,7 @@ class AdminController extends GetxController {
   }
 
   // ── Create Shop/Rider user ──
-  Future<void> createUser({
+  Future<bool> createUser({
     required String name,
     required String email,
     required String phone,
@@ -129,7 +161,7 @@ class AdminController extends GetxController {
     String? shopId,
   }) async {
     try {
-      await _authService.createUserByAdmin(
+      final createdUser = await _authService.createUserByAdmin(
         name: name,
         email: email,
         phone: phone,
@@ -137,9 +169,14 @@ class AdminController extends GetxController {
         role: role,
         shopId: shopId,
       );
-      Helpers.showSuccess('ສ້າງບັນຊີແລ້ວ');
+      if (createdUser == null) {
+        Helpers.showError('ສ້າງບັນຊີບໍ່ສຳເລັດ');
+        return false;
+      }
+      return true;
     } catch (e) {
       Helpers.showError(e.toString());
+      return false;
     }
   }
 
